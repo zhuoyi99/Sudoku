@@ -53,12 +53,16 @@ private:
 	ConstraintNetwork network;
 	SudokuBoard sudokuGrid;
 	Trail* trail;
+    Variable* selectedVariable;
 
 	bool hasSolution = false;
 
 	std::string varHeuristics;
 	std::string valHeuristics;
 	std::string cChecks;
+
+    //count of given variable's unsigned-neighbour
+    int countOfUnsignedNeighbour(Variable* var);
 };
 
 
