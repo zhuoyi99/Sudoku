@@ -92,26 +92,40 @@ pair<map<Variable*,Domain>,bool> BTSolver::forwardChecking ( void )
     {
 	    return make_pair(map<Variable*, Domain>(), false);
     }
-
-    //update neighbours's domain
     std::map<Variable*, Domain>result;
-	ConstraintNetwork::VariableSet neighbours = network.getNeighborsOfVariable (selectedVariable);
-    for(Variable* nei : neighbours)
-    {
-        //skip the variable that assigned already
-        if(nei->isAssigned() == true)
-        {
-            continue;
-        }
 
-        //track the neighbour's domain
-        trail->push(nei);
-        Domain domain = nei->getDomain();
-        domain.remove(selectedVariable->getAssignment());
-        nei->setDomain(domain);
-        result[nei] = domain;
+    // find the variable attempted  assgiend 
+    for(Variable* v : network.getVariables())
+    {
+        if(v->isAssigned() == true)
+        {
+            int valueAssigned = v->getAssignment();
+            //update neighbours's domain
+	        ConstraintNetwork::VariableSet neighbours = network.getNeighborsOfVariable(v);
+            for(Variable* nei : neighbours)
+            {
+                //skip the variable that assigned already
+                if(nei->isAssigned() == true)
+                {
+                    continue;
+                }
+
+                //skip it if this neighbour doesn't contains v's value
+                if(nei->getDomain().contains(valueAssigned) == false)
+                {
+                    continue;
+                }
+
+                //track the neighbour's domain
+                trail->push(nei);
+                Domain domain = nei->getDomain();
+                domain.remove(valueAssigned);
+                nei->setDomain(domain);
+                result[nei] = domain;
+            }
+        }	
     }
-	return make_pair(result, true);
+    return make_pair(result, true);
 }
 
 /**
@@ -133,11 +147,44 @@ pair<map<Variable*,Domain>,bool> BTSolver::forwardChecking ( void )
  */
 pair<map<Variable*,int>,bool> BTSolver::norvigCheck ( void )
 {
-    std::pair<map<Variable*,Domain>,bool>res = forwardChecking();
-    if(res.second == false)
+    //failed when check consistent
+    if(network.isConsistent() == false)
     {
-        return std::make_pair(std::map<Variable*,int>(),false);
-    }               
+	    return make_pair(map<Variable*, int>(), false);
+    }
+    std::map<Variable*, Domain>result;
+
+    // find the variable attempted  assgiend 
+    for(Variable* v : network.getVariables())
+    {
+        if(v->isAssigned() == true)
+        {
+            int valueAssigned = v->getAssignment();
+            //update neighbours's domain
+	        ConstraintNetwork::VariableSet neighbours = network.getNeighborsOfVariable(v);
+            for(Variable* nei : neighbours)
+            {
+                //skip the variable that assigned already
+                if(nei->isAssigned() == true)
+                {
+                    continue;
+                }
+
+                //skip it if this neighbour doesn't contains v's value
+                if(nei->getDomain().contains(valueAssigned) == false)
+                {
+                    continue;
+                }
+
+                //track the neighbour's domain
+                trail->push(nei);
+                Domain domain = nei->getDomain();
+                domain.remove(valueAssigned);
+                nei->setDomain(domain);
+                result[nei] = domain;
+            }
+        }	
+    }
 
     map<Variable*, int>variableChanged;
     std::vector<Constraint>constraintSet = network.getConstraints();
@@ -241,7 +288,7 @@ Variable* BTSolver::getMRV ( void )
     std::vector<Variable*>variableSet = network.getVariables();
     //iterator all variable:
     for(Variable* var : variableSet)
-    {
+    {    
         //skip the assigned variable
         if(var->isAssigned() == true)
         {
@@ -259,19 +306,6 @@ Variable* BTSolver::getMRV ( void )
 }
 
 
-int BTSolver::countOfUnsignedNeighbour(Variable* var)
-{
-    int count = 0;
-	ConstraintNetwork::VariableSet neighbours = network.getNeighborsOfVariable (selectedVariable);
-    for(Variable* nei : neighbours)
-    {
-        if(nei->isAssigned() == false)
-        {
-            count += 1;
-        }
-    }
-    return count;
-}
 
 /**
  * Part 2 TODO: Implement the Minimum Remaining Value Heuristic
@@ -316,9 +350,23 @@ vector<Variable*> BTSolver::MRVwithTieBreaker ( void )
         return result;
     }
 
+    std::map<Variable*, int>countOfUnsignedNeighbour;
+    for(int i = 0; i < result.size(); ++i)
+    {
+        int count = 0;
+	    ConstraintNetwork::VariableSet neighbours = network.getNeighborsOfVariable(result[i]);
+        for(Variable* nei : neighbours)
+        {
+            if(nei->isAssigned() == false)
+            {
+                count += 1;
+            }
+        }
+        countOfUnsignedNeighbour[result[i]] = count;
+    }
+
     //sort the variable by the number of unsigned neighbours
-    std::sort(result.begin(), result.end(), [this](Variable* v1, Variable* v2){return this->countOfUnsignedNeighbour(v1) > this->countOfUnsignedNeighbour(v2);});
- 
+    std::sort(result.begin(), result.end(), [countOfUnsignedNeighbour](Variable* v1, Variable* v2){return countOfUnsignedNeighbour.at(v1) > countOfUnsignedNeighbour.at(v2);});
     return result;
 }
 
@@ -370,10 +418,10 @@ vector<int> BTSolver::getValuesLCVOrder ( Variable* v )
         for(Variable* nei : neighbors)
         {
             //skip the variable that assigned already
-            if(nei->isAssigned() == true)
-            {
-                continue;
-            }
+            //if(nei->isAssigned() == true)
+            //{
+             //   continue;
+            //}
 
             Domain domainOfNei = nei->getDomain();
             if(domainOfNei.contains(value))
@@ -384,7 +432,13 @@ vector<int> BTSolver::getValuesLCVOrder ( Variable* v )
     }
     
     vector<int>valueSet = domain.getValues();
-    std::sort(valueSet.begin(),valueSet.end(),[countOfKnockedOut](int a, int b){return countOfKnockedOut.at(a) < countOfKnockedOut.at(b);});
+    std::sort(valueSet.begin(),valueSet.end(),[countOfKnockedOut](int a, int b){
+        if(countOfKnockedOut.at(a) != countOfKnockedOut.at(b)){
+            return countOfKnockedOut.at(a) < countOfKnockedOut.at(b);
+        }else{
+            return a < b;
+        }
+    });
 
     return valueSet;
 }
@@ -444,9 +498,6 @@ int BTSolver::solve ( float time_left)
 
 		// Assign the value
 		v->assignValue( i );
-
-        // store the variable for futher consistent-check
-        selectedVariable = v;
 
 		// Propagate constraints, check consistency, recurse
 		if ( checkConsistency() ) {
