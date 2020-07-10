@@ -152,9 +152,8 @@ pair<map<Variable*,int>,bool> BTSolver::norvigCheck ( void )
     {
 	    return make_pair(map<Variable*, int>(), false);
     }
-    std::map<Variable*, Domain>result;
 
-    // find the variable attempted  assgiend 
+    //do prune,   search for the variable  assgiend already
     for(Variable* v : network.getVariables())
     {
         if(v->isAssigned() == true)
@@ -181,11 +180,11 @@ pair<map<Variable*,int>,bool> BTSolver::norvigCheck ( void )
                 Domain domain = nei->getDomain();
                 domain.remove(valueAssigned);
                 nei->setDomain(domain);
-                result[nei] = domain;
             }
         }	
     }
 
+    //do norvig check below
     map<Variable*, int>variableChanged;
     std::vector<Constraint>constraintSet = network.getConstraints();
 
@@ -210,6 +209,7 @@ pair<map<Variable*,int>,bool> BTSolver::norvigCheck ( void )
                 }
             }
             
+            //the value which count only one
             int valueThatCountOne = -1;
 
             // iterator values
@@ -247,7 +247,7 @@ pair<map<Variable*,int>,bool> BTSolver::norvigCheck ( void )
         }
     }
     
-    return make_pair(variableChanged, false);
+    return make_pair(variableChanged, true);
 }
 
 /**
