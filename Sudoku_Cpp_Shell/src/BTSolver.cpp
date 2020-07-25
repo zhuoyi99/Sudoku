@@ -258,7 +258,8 @@ pair<map<Variable*,int>,bool> BTSolver::norvigCheck ( void )
  */
 bool BTSolver::getTournCC ( void )
 {
-	return false;
+   return norvigCheck().second;
+    
 }
 
 // =====================================================================
@@ -378,7 +379,10 @@ vector<Variable*> BTSolver::MRVwithTieBreaker ( void )
  */
 Variable* BTSolver::getTournVar ( void )
 {
-	return nullptr;
+    return MRVwithTieBreaker( ).front();
+
+      
+
 }
 
 // =====================================================================
@@ -453,7 +457,7 @@ vector<int> BTSolver::getValuesLCVOrder ( Variable* v )
  */
 vector<int> BTSolver::getTournVal ( Variable* v )
 {
-	return vector<int>();
+    return getValuesLCVOrder(v);
 }
 
 // =====================================================================
